@@ -15,6 +15,7 @@ More information about FLAME is available at http://flame.is.tue.mpg.de.
 For comments or questions, please email us at flame@tue.mpg.de
 '''
 
+import io
 import cv2
 import sys
 import pickle
@@ -23,11 +24,14 @@ import tensorflow as tf
 from psbody.mesh.sphere import Sphere
 
 def load_binary_pickle(filepath):
-    with open(filepath, 'rb') as f:
-        if sys.version_info >= (3, 0):
-            data = pickle.load(f, encoding='latin1')
-        else:
-            data = pickle.load(f)
+    if sys.version_info >= (3, 0):
+        with open(filepath, 'rb') as f:
+            # correct for crlf line ends
+            lines = [line.rstrip(b'\r\n') for line in f.readlines()]
+            data = pickle.loads(b'\n'.join(lines), encoding='latin1')
+    else:
+        with open(filepath, 'rb') as f:
+                data = pickle.load(f)
     return data
 
 def create_lmk_spheres(lmks, radius, color=[255.0, 0.0, 0.0]):
@@ -41,6 +45,7 @@ def load_embedding( file_path ):
     note: the included example is corresponding to CMU IntraFace 49-point landmark format.
     """
     lmk_indexes_dict = load_binary_pickle( file_path )
+    print(type(lmk_indexes_dict))
     lmk_face_idx = lmk_indexes_dict[ 'lmk_face_idx' ].astype( np.uint32 )
     lmk_b_coords = lmk_indexes_dict[ 'lmk_b_coords' ]
     return lmk_face_idx, lmk_b_coords
