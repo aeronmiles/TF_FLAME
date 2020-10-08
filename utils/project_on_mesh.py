@@ -1,5 +1,5 @@
 import numpy as np
-from utils.landmarks import tf_project_points
+from .landmarks import tf_project_points
 
 def compute_texture_map(source_img, target_mesh, target_scale, texture_data):
     '''

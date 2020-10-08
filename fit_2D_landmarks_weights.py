@@ -24,10 +24,10 @@ import numpy as np
 import tensorflow as tf
 from psbody.mesh import Mesh
 from psbody.mesh.meshviewer import MeshViewers
-from utils.landmarks import load_embedding, tf_get_model_lmks, create_lmk_spheres, tf_project_points
-from utils.project_on_mesh import compute_texture_map
+from .utils.landmarks import load_embedding, tf_get_model_lmks, create_lmk_spheres, tf_project_points
+from .utils.project_on_mesh import compute_texture_map
 
-from tf_smpl.batch_smpl import SMPL
+from .tf_smpl.batch_smpl import SMPL
 from tensorflow.contrib.opt import ScipyOptimizerInterface as scipy_pt
 
 # CUDA BLAS setting
@@ -247,10 +247,11 @@ def run_2d_lmk_fitting(model_fname, flame_lmk_path, texture_mapping, target_img_
     else:
         raise Exception("--model_fname is not one of the following: generic_model.pkl, female_model.pkl, male_model.pkl")
 
+    # remove empty lines
+    # result_values = filter(lambda x: not re.match(r'^\s*$', x), result_values)
     # save face model type[0], translation[1:7] and weights[8:]
-    basepath = os.path.join(out_path, os.path.splitext(
-        os.path.basename(target_img_path))[0])
-    np.savetxt(basepath + '_values.txt', result_values)
+    head, tail = os.path.split(target_img_path)
+    np.savetxt(out_path + '/' + tail + '_fit.txt', result_values)
 
     if visualize:
         mv = MeshViewers(shape=[1, 2], keepalive=True)
@@ -258,6 +259,11 @@ def run_2d_lmk_fitting(model_fname, flame_lmk_path, texture_mapping, target_img_
         mv[0][1].set_static_meshes([result_mesh])
 
 
+### Main function
+def fit_mesh(img='./*.jpeg', input_lmks='./*.npy', out_path='./results', model='./models/generic_model.pkl', ref_lmks='./data/flame_static_embedding_68.pkl', tex_data='./data/texture_data.npy', visualize=False):
+    run_2d_lmk_fitting(model, ref_lmks, tex_data, img, input_lmks, out_path, visualize)
+
+### Command line interface
 if __name__ == '__main__':
     parser = argparse.ArgumentParser(description='Build texture from image')
     # Path of the Tensorflow FLAME model (generic, female, male gender)
@@ -288,3 +294,5 @@ if __name__ == '__main__':
 
     run_2d_lmk_fitting(args.model_fname, args.flame_lmk_path, args.texture_mapping,
                        args.target_img_path, args.target_lmk_path, args.out_path, str2bool(args.visualize))
+
+

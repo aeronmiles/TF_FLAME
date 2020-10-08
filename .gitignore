@@ -3,6 +3,7 @@
 results/*
 data/texture_data_2048.npy
 models/*.pkl
+*.log
 
 #### PYTHON
 # https://github.com/github/gitignore/blob/master/Python.gitignore
