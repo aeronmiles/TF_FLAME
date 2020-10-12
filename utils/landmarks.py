@@ -45,7 +45,6 @@ def load_embedding( file_path ):
     note: the included example is corresponding to CMU IntraFace 49-point landmark format.
     """
     lmk_indexes_dict = load_binary_pickle( file_path )
-    print(type(lmk_indexes_dict))
     lmk_face_idx = lmk_indexes_dict[ 'lmk_face_idx' ].astype( np.uint32 )
     lmk_b_coords = lmk_indexes_dict[ 'lmk_b_coords' ]
     return lmk_face_idx, lmk_b_coords

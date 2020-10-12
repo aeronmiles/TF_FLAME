@@ -32,8 +32,8 @@ from tensorflow.contrib.opt import ScipyOptimizerInterface as scipy_pt
 
 # CUDA BLAS setting
 config = tf.ConfigProto()
+# config.gpu_options.per_process_gpu_memory_fraction = 0.3
 config.gpu_options.allow_growth = True
-
 
 def str2bool(val):
     if isinstance(val, bool):
@@ -74,6 +74,7 @@ def fit_lmk2d(target_img, target_2d_lmks, model_fname, lmk_face_idx, lmk_b_coord
                                tf.concat((tf_shape, tf_exp), axis=-1),
                                tf.concat((tf_rot, tf_pose), axis=-1)))
 
+    
     with tf.Session(config=config) as session:
         # session.run(tf.global_variables_initializer())
 
@@ -245,7 +246,8 @@ def run_2d_lmk_fitting(model_fname, flame_lmk_path, texture_mapping, target_img_
     elif 'male_model.pkl' in model_fname:
         result_values = np.append(np.array([2]), result_values)
     else:
-        raise Exception("--model_fname is not one of the following: generic_model.pkl, female_model.pkl, male_model.pkl")
+        raise Exception(
+            "--model_fname is not one of the following: generic_model.pkl, female_model.pkl, male_model.pkl")
 
     # remove empty lines
     # result_values = filter(lambda x: not re.match(r'^\s*$', x), result_values)
@@ -259,11 +261,13 @@ def run_2d_lmk_fitting(model_fname, flame_lmk_path, texture_mapping, target_img_
         mv[0][1].set_static_meshes([result_mesh])
 
 
-### Main function
+# Main function
 def fit_mesh(img='./*.jpeg', input_lmks='./*.npy', out_path='./results', model='./models/generic_model.pkl', ref_lmks='./data/flame_static_embedding_68.pkl', tex_data='./data/texture_data.npy', visualize=False):
-    run_2d_lmk_fitting(model, ref_lmks, tex_data, img, input_lmks, out_path, visualize)
+    run_2d_lmk_fitting(model, ref_lmks, tex_data, img,
+                       input_lmks, out_path, visualize)
 
-### Command line interface
+
+# Command line interface
 if __name__ == '__main__':
     parser = argparse.ArgumentParser(description='Build texture from image')
     # Path of the Tensorflow FLAME model (generic, female, male gender)
@@ -294,5 +298,3 @@ if __name__ == '__main__':
 
     run_2d_lmk_fitting(args.model_fname, args.flame_lmk_path, args.texture_mapping,
                        args.target_img_path, args.target_lmk_path, args.out_path, str2bool(args.visualize))
-
-
