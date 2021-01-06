@@ -16,7 +16,10 @@ def render_mesh(mesh, height, width):
 
     camera = pyrender.camera.OrthographicCamera(xmag=0.001*0.5*width, ymag=0.001*0.5*height, znear=0.01, zfar=10)
     camera_pose = np.eye(4)
+    # camera_pose[:3, 3] = np.array([0.0, 0.0, 1.0])
     camera_pose[:3, 3] = np.array([0.001*0.5*width, 0.001*0.5*height, 1.0])
+
+    # print("camera_pose : " + str(camera_pose))
     scene.add(camera, pose=camera_pose)
 
     light = pyrender.PointLight(color=[1.0, 1.0, 1.0], intensity=1.0)

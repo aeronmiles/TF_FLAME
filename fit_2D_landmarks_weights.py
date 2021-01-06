@@ -31,9 +31,10 @@ from .tf_smpl.batch_smpl import SMPL
 from tensorflow.contrib.opt import ScipyOptimizerInterface as scipy_pt
 
 # CUDA BLAS setting
-config = tf.ConfigProto()
+config = tf.compat.v1.ConfigProto()
 # config.gpu_options.per_process_gpu_memory_fraction = 0.3
-config.gpu_options.allow_growth = True
+# config.gpu_options.allow_growth = True
+
 
 def str2bool(val):
     if isinstance(val, bool):
@@ -74,7 +75,6 @@ def fit_lmk2d(target_img, target_2d_lmks, model_fname, lmk_face_idx, lmk_b_coord
                                tf.concat((tf_shape, tf_exp), axis=-1),
                                tf.concat((tf_rot, tf_pose), axis=-1)))
 
-    
     with tf.Session(config=config) as session:
         # session.run(tf.global_variables_initializer())
 
@@ -107,7 +107,7 @@ def fit_lmk2d(target_img, target_2d_lmks, model_fname, lmk_face_idx, lmk_b_coord
         shape_reg = weights['shape']*tf.reduce_sum(tf.square(tf_shape))
         exp_reg = weights['expr']*tf.reduce_sum(tf.square(tf_exp))
 
-        session.run(tf.global_variables_initializer())
+        session.run(tf.compat.v1.global_variables_initializer())
 
         if visualize:
             def on_step(verts, scale, faces, target_img, target_lmks, opt_lmks, lmk_dist=0.0, shape_reg=0.0, exp_reg=0.0, neck_pose_reg=0.0, jaw_pose_reg=0.0, eyeballs_pose_reg=0.0):
@@ -115,7 +115,7 @@ def fit_lmk2d(target_img, target_2d_lmks, model_fname, lmk_face_idx, lmk_b_coord
                 import sys
                 import numpy as np
                 from psbody.mesh import Mesh
-                from utils.render_mesh import render_mesh
+                from .utils.render_mesh import render_mesh
 
                 if lmk_dist > 0.0 or shape_reg > 0.0 or exp_reg > 0.0 or neck_pose_reg > 0.0 or jaw_pose_reg > 0.0 or eyeballs_pose_reg > 0.0:
                     print('lmk_dist: %f, shape_reg: %f, exp_reg: %f, neck_pose_reg: %f, jaw_pose_reg: %f, eyeballs_pose_reg: %f' % (
@@ -144,6 +144,10 @@ def fit_lmk2d(target_img, target_2d_lmks, model_fname, lmk_face_idx, lmk_b_coord
 
                 cv2.imshow('img', target_img)
                 cv2.waitKey(10)
+                # print("S " + str(tf_scale.eval()) + " sc " + str(scale))
+                # print(" R " + str(tf_rot.eval()))
+                # print(" T " + str(tf_trans.eval()))
+
         else:
             def on_step(*_):
                 pass
@@ -171,12 +175,13 @@ def fit_lmk2d(target_img, target_2d_lmks, model_fname, lmk_face_idx, lmk_b_coord
         np_verts, np_scale, np_trans, np_rot, np_shape, np_pose, np_exp = session.run(
             [tf_model, tf_scale, tf_trans, tf_rot, tf_shape, tf_pose, tf_exp])
 
-        np_values = np.append(
-            # translation
-            np.append(np_trans, np.append(np_rot[0], [np_scale])),
-            # weights
-            np.append(np_shape, np.append(np_exp[0], np_pose[0]))
-        )
+        np_values = np.append(np_trans, np.append(np_rot, [np_scale]))
+        # np_values = np.append(
+        #     # translation
+        #     np.append(np_trans, np.append(np_rot, [np_scale])),
+        #     # weights
+        #     np.append(np_shape, np.append(np_exp[0], np_pose[0]))
+        # )
 
         return Mesh(np_verts, smpl.f), np_values
 
@@ -227,17 +232,18 @@ def run_2d_lmk_fitting(model_fname, flame_lmk_path, texture_mapping, target_img_
     texture_map = compute_texture_map(
         target_img, result_mesh, result_values[6], texture_data)
 
-    out_mesh_fname = os.path.join(out_path, os.path.splitext(
-        os.path.basename(target_img_path))[0] + '.obj')
-    out_img_fname = os.path.join(out_path, os.path.splitext(
-        os.path.basename(target_img_path))[0] + '.png')
+    img_name = os.path.splitext(os.path.basename(target_img_path))[0]
+    out_mesh_fname = os.path.join(out_path, img_name + '.obj')
+    out_img_fname = os.path.join(out_path, img_name + '_tex.png')
 
     cv2.imwrite(out_img_fname, texture_map)
-    result_mesh.set_vertex_colors('white')
+    # result_mesh.set_vertex_colors('white')
     result_mesh.vt = texture_data['vt']
     result_mesh.ft = texture_data['ft']
-    result_mesh.set_texture_image(out_img_fname)
+    # result_mesh.set_texture_image(out_img_fname)
     result_mesh.write_obj(out_mesh_fname)
+    
+    os.remove(target_lmk_path)
 
     if 'generic_model.pkl' in model_fname:
         result_values = np.append(np.array([0]), result_values)
@@ -253,18 +259,22 @@ def run_2d_lmk_fitting(model_fname, flame_lmk_path, texture_mapping, target_img_
     # result_values = filter(lambda x: not re.match(r'^\s*$', x), result_values)
     # save face model type[0], translation[1:7] and weights[8:]
     head, tail = os.path.split(target_img_path)
-    np.savetxt(out_path + '/' + tail + '_fit.txt', result_values)
+    np.savetxt(out_path + '/' + os.path.splitext(tail)[0] + '_trs.txt', result_values)
 
-    if visualize:
-        mv = MeshViewers(shape=[1, 2], keepalive=True)
-        mv[0][0].set_static_meshes([Mesh(result_mesh.v, result_mesh.f)])
-        mv[0][1].set_static_meshes([result_mesh])
+    # if visualize:
+    #     mv = MeshViewers(shape=[1, 2], keepalive=True)
+    #     mv[0][0].set_static_meshes([Mesh(result_mesh.v, result_mesh.f)])
+    #     mv[0][1].set_static_meshes([result_mesh])
 
 
 # Main function
 def fit_mesh(img='./*.jpeg', input_lmks='./*.npy', out_path='./results', model='./models/generic_model.pkl', ref_lmks='./data/flame_static_embedding_68.pkl', tex_data='./data/texture_data.npy', visualize=False):
-    run_2d_lmk_fitting(model, ref_lmks, tex_data, img,
-                       input_lmks, out_path, visualize)
+    run_2d_lmk_fitting(model, ref_lmks, tex_data, img, input_lmks, out_path, visualize)
+
+def fit_meshes(images, landmarks, out_path='./results', model='./models/generic_model.pkl', ref_lmks='./data/flame_static_embedding_68.pkl', tex_data='./data/texture_data.npy', visualize=False):
+    for _, (img, lmks) in enumerate(zip(images, landmarks)):
+        run_2d_lmk_fitting(model, ref_lmks, tex_data, img, lmks, out_path, visualize)
+    
 
 
 # Command line interface
